@@ -1,0 +1,6 @@
+{
+  "name": "CreativeAct CLI",
+  "description": "Local Termux Ollama Platform",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
