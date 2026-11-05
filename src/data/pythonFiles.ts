@@ -1000,5 +1000,29 @@ chmod +x "$INSTALL_BIN"
 echo -e "\\033[1;32m[✔] Termux Ollama CLI successfully installed!\\033[0m"
 echo -e "\\033[1;37mRun '\\033[1;33mollama-cli\\033[1;37m' anytime from your Termux terminal.\\033[0m"
 `
+  },
+  {
+    name: 'QUICKSTART.md',
+    path: 'QUICKSTART.md',
+    language: 'markdown',
+    description: "Beginner's quickstart guide with step-by-step Termux setup and Ollama backend configuration.",
+    code: `# CreativeAct CLI — Beginner's Quickstart Guide
+Local Termux Ollama Platform on Android
+
+1. Install Termux from F-Droid (not Google Play)
+2. Run wake-lock:
+   termux-wake-lock
+3. Update & Install dependencies:
+   pkg update && pkg install -y python git curl
+   pip install --upgrade rich httpx
+4. Install CreativeAct CLI:
+   bash termux_ollama_cli/install_termux.sh
+5. Run:
+   ollama-cli
+6. In menu:
+   - [2] Models -> [p] pull 'llama3.2:1b'
+   - [2] Models -> [s] set as active
+   - [1] Chat -> start streaming conversation!
+`
   }
 ];
