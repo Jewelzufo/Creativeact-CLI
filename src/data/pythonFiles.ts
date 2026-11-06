@@ -1051,5 +1051,22 @@ Create 'launch_creativeact.bat' in the project folder:
    wt.exe -p "PowerShell" python -m termux_ollama_cli.app
 Right-click -> Send to -> Desktop (create shortcut).
 `
+  },
+  {
+    name: 'README.md',
+    path: 'README.md',
+    language: 'markdown',
+    description: 'Main project documentation: features, model comparison, architecture, and configuration.',
+    code: `# CreativeAct CLI: Local Termux Ollama Platform
+
+Resource-efficient, touch-friendly terminal application for Ollama within Termux on Android and Windows 11.
+
+## Features:
+- Model management: list, pull with progress, delete, set active
+- Side-by-side model comparison table: parameter sizes, quantization levels, last inference duration metrics
+- Touch-friendly numeric menu: [1] Chat, [2] Models, [3] Prompts, [4] Metrics, [5] Theme, [0] Exit
+- Streaming token engine with Rich Live view & grounded telemetry
+- Dynamic SIGWINCH handling for screen rotation
+`
   }
 ];
