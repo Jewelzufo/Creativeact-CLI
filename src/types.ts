@@ -9,6 +9,7 @@ export interface OllamaModel {
     parameter_size?: string;
     quantization_level?: string;
   };
+  lastMetrics?: InferenceTelemetry | null;
 }
 
 export interface PromptTemplate {

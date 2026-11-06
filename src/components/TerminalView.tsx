@@ -12,10 +12,12 @@ import {
   Layers, 
   Download, 
   Check, 
-  AlertTriangle,
   Play,
   Trash2,
-  Bookmark
+  Bookmark,
+  GitCompare,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { OllamaModel, PromptTemplate, InferenceTelemetry, AppConfig, MenuState } from '../types';
 
@@ -34,7 +36,7 @@ interface TerminalViewProps {
   onAddPrompt: (prompt: PromptTemplate) => void;
   onDeletePrompt: (id: string) => void;
   lastTelemetry: InferenceTelemetry | null;
-  onRecordTelemetry: (telemetry: InferenceTelemetry) => void;
+  onRecordTelemetry: (telemetry: InferenceTelemetry, modelName?: string) => void;
 }
 
 export const TerminalView: React.FC<TerminalViewProps> = ({
@@ -77,6 +79,22 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
   // New prompt input state
   const [newPromptForm, setNewPromptForm] = useState({ id: '', title: '', template: '', desc: '' });
 
+  // Model comparison state
+  const [isCompareMode, setIsCompareMode] = useState(false);
+  const [compareSelected, setCompareSelected] = useState<string[]>([]);
+
+  const toggleSelectForCompare = (name: string) => {
+    setCompareSelected((prev) => {
+      if (prev.includes(name)) {
+        return prev.filter((n) => n !== name);
+      }
+      if (prev.length >= 2) {
+        return [prev[1], name];
+      }
+      return [...prev, name];
+    });
+  };
+
   const terminalScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -118,6 +136,10 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
     } else if (menuState === 'models') {
       if (trimmed === 'b' || trimmed === '0' || trimmed === ':q') {
         setMenuState('main');
+        setIsCompareMode(false);
+      } else if (trimmed === 'c') {
+        setIsCompareMode((prev) => !prev);
+        appendLog(`[bold cyan]Model comparison toggle: ${!isCompareMode ? 'ENABLED' : 'DISABLED'}[/bold cyan]`);
       } else if (trimmed === 'p') {
         setMenuState('models_pull');
       } else if (trimmed.startsWith('s ') || !isNaN(Number(trimmed))) {
@@ -230,7 +252,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
           prompt_eval_duration_sec: 0.12,
           timestamp: new Date().toLocaleTimeString(),
         };
-        onRecordTelemetry(telemetry);
+        onRecordTelemetry(telemetry, config.active_model);
         appendLog(`[dim]⚡ Telemetry: [bold green]${speed} t/s[/bold green] (${generatedCount} tokens in ${evalDurationSec.toFixed(2)}s)[/dim]`);
       }
     }, 45);
@@ -447,92 +469,333 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
         )}
 
         {/* Models Management Sub-view */}
-        {menuState === 'models' && (
-          <div className="space-y-3 border border-cyan-800/50 rounded-lg p-3 bg-zinc-950/70">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-              <div className="font-bold text-cyan-400 flex items-center gap-1.5">
-                <Cpu className="w-4 h-4 text-amber-300" />
-                <span>Installed Models</span>
-              </div>
-              <button 
-                onClick={() => setMenuState('main')} 
-                className="text-xs text-slate-400 hover:text-white px-2 py-0.5 rounded bg-zinc-800"
-              >
-                [b] Back
-              </button>
-            </div>
+        {menuState === 'models' && (() => {
+          const modelA = models.find((m) => m.name === compareSelected[0]);
+          const modelB = models.find((m) => m.name === compareSelected[1]);
 
-            <div className="space-y-1.5">
-              {models.map((model, idx) => {
-                const isActive = model.name === config.active_model;
-                return (
-                  <div 
-                    key={model.name}
-                    className={`p-2 rounded border flex items-center justify-between text-xs transition-colors ${
-                      isActive 
-                        ? 'border-emerald-500/80 bg-emerald-950/20 text-emerald-200' 
-                        : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700'
+          return (
+            <div className="space-y-3 border border-cyan-800/50 rounded-lg p-3 bg-zinc-950/70">
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                <div className="font-bold text-cyan-400 flex items-center gap-1.5">
+                  <Cpu className="w-4 h-4 text-amber-300" />
+                  <span>Installed Models</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setIsCompareMode((prev) => !prev);
+                      if (isCompareMode) setCompareSelected([]);
+                    }}
+                    className={`text-xs px-2.5 py-1 rounded font-bold flex items-center gap-1 transition-colors ${
+                      isCompareMode
+                        ? 'bg-amber-400 text-black shadow-sm'
+                        : 'bg-zinc-800 text-amber-300 hover:bg-zinc-700 hover:text-amber-200'
                     }`}
+                    title="Toggle side-by-side model comparison"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-amber-300 font-bold">[{idx + 1}]</span>
-                      <div>
-                        <div className="font-bold flex items-center gap-1.5">
-                          {model.name}
-                          {isActive && (
-                            <span className="text-[9px] bg-emerald-500 text-black font-bold px-1 rounded">
-                              ACTIVE
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[10px] text-slate-400">
-                          {(model.size / (1024 * 1024 * 1024)).toFixed(2)} GB · {model.details?.quantization_level || 'Q4_K_M'}
+                    <GitCompare className="w-3.5 h-3.5" />
+                    <span>{isCompareMode ? 'Exit Compare' : 'Compare'}</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setMenuState('main');
+                      setIsCompareMode(false);
+                    }} 
+                    className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-zinc-800"
+                  >
+                    [b] Back
+                  </button>
+                </div>
+              </div>
+
+              {/* Compare Mode Guidance Banner */}
+              {isCompareMode && (
+                <div className="p-2 rounded bg-amber-950/30 border border-amber-600/40 text-[11px] text-amber-200 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <GitCompare className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>
+                      {compareSelected.length === 0 && 'Select any 2 models below to compare them side-by-side.'}
+                      {compareSelected.length === 1 && (
+                        <>1 model selected (<strong className="text-amber-300">{compareSelected[0]}</strong>). Select 1 more.</>
+                      )}
+                      {compareSelected.length === 2 && (
+                        <>Comparing <strong className="text-cyan-300">{compareSelected[0]}</strong> vs <strong className="text-purple-300">{compareSelected[1]}</strong>.</>
+                      )}
+                    </span>
+                  </div>
+                  {compareSelected.length > 0 && (
+                    <button
+                      onClick={() => setCompareSelected([])}
+                      className="text-[10px] text-slate-400 hover:text-white underline ml-2 shrink-0"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Model Cards / List */}
+              <div className="space-y-1.5">
+                {models.map((model, idx) => {
+                  const isActive = model.name === config.active_model;
+                  const isSelected = compareSelected.includes(model.name);
+                  const selectionIndex = compareSelected.indexOf(model.name);
+
+                  return (
+                    <div 
+                      key={model.name}
+                      onClick={() => {
+                        if (isCompareMode) toggleSelectForCompare(model.name);
+                      }}
+                      className={`p-2 rounded border flex items-center justify-between text-xs transition-colors ${
+                        isSelected
+                          ? 'border-amber-400 bg-amber-950/30 text-amber-100 ring-1 ring-amber-400/50 cursor-pointer'
+                          : isActive 
+                          ? 'border-emerald-500/80 bg-emerald-950/20 text-emerald-200' 
+                          : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 cursor-pointer'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {isCompareMode ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSelectForCompare(model.name);
+                            }}
+                            className={`p-1 rounded transition-colors ${
+                              isSelected ? 'text-amber-300' : 'text-slate-500 hover:text-slate-300'
+                            }`}
+                          >
+                            {isSelected ? (
+                              <div className="flex items-center gap-1 font-bold text-amber-300 text-[10px]">
+                                <CheckSquare className="w-4 h-4 text-amber-400" />
+                                <span>{selectionIndex === 0 ? 'A' : 'B'}</span>
+                              </div>
+                            ) : (
+                              <Square className="w-4 h-4" />
+                            )}
+                          </button>
+                        ) : (
+                          <span className="text-amber-300 font-bold">[{idx + 1}]</span>
+                        )}
+
+                        <div>
+                          <div className="font-bold flex items-center gap-1.5">
+                            {model.name}
+                            {isActive && (
+                              <span className="text-[9px] bg-emerald-500 text-black font-bold px-1 rounded">
+                                ACTIVE
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                            <span>{model.details?.parameter_size || 'N/A'}</span>
+                            <span>·</span>
+                            <span>{model.details?.quantization_level || 'Q4_K_M'}</span>
+                            <span>·</span>
+                            <span>{(model.size / (1024 * 1024 * 1024)).toFixed(2)} GB</span>
+                            {model.lastMetrics?.tokens_per_second && (
+                              <>
+                                <span>·</span>
+                                <span className="text-emerald-400 font-bold">
+                                  {model.lastMetrics.tokens_per_second} t/s
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-1">
-                      {!isActive && (
-                        <button
-                          onClick={() => {
-                            onUpdateConfig({ active_model: model.name });
-                            appendLog(`[bold green]Active model set to '${model.name}' in config.json![/bold green]`);
-                          }}
-                          className="px-2 py-1 rounded bg-zinc-800 hover:bg-emerald-600 hover:text-black text-[10px] font-bold text-emerald-400 transition-colors"
-                        >
-                          Set Active
-                        </button>
-                      )}
-                      {models.length > 1 && (
-                        <button
-                          onClick={() => {
-                            onDeleteModel(model.name);
-                            appendLog(`[yellow]Model '${model.name}' removed from local registry.[/yellow]`);
-                          }}
-                          className="p-1 rounded hover:bg-rose-950/60 text-slate-500 hover:text-rose-400"
-                          title="Delete Model"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        {!isActive && !isCompareMode && (
+                          <button
+                            onClick={() => {
+                              onUpdateConfig({ active_model: model.name });
+                              appendLog(`[bold green]Active model set to '${model.name}' in config.json![/bold green]`);
+                            }}
+                            className="px-2 py-1 rounded bg-zinc-800 hover:bg-emerald-600 hover:text-black text-[10px] font-bold text-emerald-400 transition-colors"
+                          >
+                            Set Active
+                          </button>
+                        )}
+                        {models.length > 1 && !isCompareMode && (
+                          <button
+                            onClick={() => {
+                              onDeleteModel(model.name);
+                              appendLog(`[yellow]Model '${model.name}' removed from local registry.[/yellow]`);
+                            }}
+                            className="p-1 rounded hover:bg-rose-950/60 text-slate-500 hover:text-rose-400"
+                            title="Delete Model"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+
+              {/* Side-by-Side Model Comparison Table */}
+              {isCompareMode && modelA && modelB && (
+                <div className="mt-3 border-2 border-amber-500/70 rounded-lg p-3 bg-zinc-950 shadow-xl space-y-3 animate-fade-in">
+                  <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-amber-300">
+                      <GitCompare className="w-4 h-4 text-amber-400" />
+                      <span>Side-by-Side Model Comparison</span>
+                    </div>
+                    <button
+                      onClick={() => setCompareSelected([])}
+                      className="text-[10px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-zinc-800"
+                    >
+                      Clear
+                    </button>
                   </div>
-                );
-              })}
-            </div>
 
-            {/* Model Action Quick Buttons */}
-            <div className="pt-2 border-t border-zinc-800 flex items-center gap-2">
-              <button
-                onClick={() => setMenuState('models_pull')}
-                className="flex-1 py-1.5 px-3 rounded bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>[p] Pull / Download New Model</span>
-              </button>
+                  {/* Comparison Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs font-mono border-collapse">
+                      <thead>
+                        <tr className="border-b border-zinc-700 text-left">
+                          <th className="py-1.5 text-slate-400 w-1/3">Specification</th>
+                          <th className="py-1.5 text-cyan-300 w-1/3">
+                            <div className="flex items-center gap-1">
+                              <span>{modelA.name}</span>
+                              {modelA.name === config.active_model && (
+                                <span className="text-[9px] bg-emerald-500 text-black px-1 rounded font-bold">ACTIVE</span>
+                              )}
+                            </div>
+                          </th>
+                          <th className="py-1.5 text-purple-300 w-1/3">
+                            <div className="flex items-center gap-1">
+                              <span>{modelB.name}</span>
+                              {modelB.name === config.active_model && (
+                                <span className="text-[9px] bg-emerald-500 text-black px-1 rounded font-bold">ACTIVE</span>
+                              )}
+                            </div>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800/80">
+                        <tr>
+                          <td className="py-1.5 text-slate-400">Parameter Size</td>
+                          <td className="py-1.5 font-bold text-slate-200">{modelA.details?.parameter_size || 'N/A'}</td>
+                          <td className="py-1.5 font-bold text-slate-200">{modelB.details?.parameter_size || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-1.5 text-slate-400">Quantization Level</td>
+                          <td className="py-1.5 font-bold text-amber-300">{modelA.details?.quantization_level || 'N/A'}</td>
+                          <td className="py-1.5 font-bold text-amber-300">{modelB.details?.quantization_level || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-1.5 text-slate-400">Architecture Family</td>
+                          <td className="py-1.5 text-slate-300">{modelA.details?.family || 'transformer'}</td>
+                          <td className="py-1.5 text-slate-300">{modelB.details?.family || 'transformer'}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-1.5 text-slate-400">Disk Footprint</td>
+                          <td className="py-1.5 text-slate-300">{(modelA.size / (1024 * 1024 * 1024)).toFixed(2)} GB</td>
+                          <td className="py-1.5 text-slate-300">{(modelB.size / (1024 * 1024 * 1024)).toFixed(2)} GB</td>
+                        </tr>
+                        <tr className="bg-zinc-900/60">
+                          <td colSpan={3} className="py-1 text-[10px] font-bold text-cyan-400 uppercase tracking-wider">
+                            Last Inference Duration & Telemetry
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-1.5 text-slate-400">Eval Duration</td>
+                          <td className="py-1.5 font-bold text-emerald-400">
+                            {modelA.lastMetrics?.eval_duration_sec !== null && modelA.lastMetrics?.eval_duration_sec !== undefined 
+                              ? `${modelA.lastMetrics.eval_duration_sec} s` 
+                              : 'N/A'}
+                          </td>
+                          <td className="py-1.5 font-bold text-emerald-400">
+                            {modelB.lastMetrics?.eval_duration_sec !== null && modelB.lastMetrics?.eval_duration_sec !== undefined 
+                              ? `${modelB.lastMetrics.eval_duration_sec} s` 
+                              : 'N/A'}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-1.5 text-slate-400">Generation Speed</td>
+                          <td className="py-1.5 font-bold text-amber-300">
+                            {modelA.lastMetrics?.tokens_per_second !== null && modelA.lastMetrics?.tokens_per_second !== undefined 
+                              ? `${modelA.lastMetrics.tokens_per_second} t/s` 
+                              : 'N/A'}
+                          </td>
+                          <td className="py-1.5 font-bold text-amber-300">
+                            {modelB.lastMetrics?.tokens_per_second !== null && modelB.lastMetrics?.tokens_per_second !== undefined 
+                              ? `${modelB.lastMetrics.tokens_per_second} t/s` 
+                              : 'N/A'}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-1.5 text-slate-400">Tokens Generated (eval_count)</td>
+                          <td className="py-1.5 text-slate-300">
+                            {modelA.lastMetrics?.eval_count !== null && modelA.lastMetrics?.eval_count !== undefined 
+                              ? `${modelA.lastMetrics.eval_count} tokens` 
+                              : 'N/A'}
+                          </td>
+                          <td className="py-1.5 text-slate-300">
+                            {modelB.lastMetrics?.eval_count !== null && modelB.lastMetrics?.eval_count !== undefined 
+                              ? `${modelB.lastMetrics.eval_count} tokens` 
+                              : 'N/A'}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-1.5 text-slate-400">Model Load Latency</td>
+                          <td className="py-1.5 text-cyan-300">
+                            {modelA.lastMetrics?.load_duration_ms !== null && modelA.lastMetrics?.load_duration_ms !== undefined 
+                              ? `${modelA.lastMetrics.load_duration_ms} ms` 
+                              : 'N/A'}
+                          </td>
+                          <td className="py-1.5 text-cyan-300">
+                            {modelB.lastMetrics?.load_duration_ms !== null && modelB.lastMetrics?.load_duration_ms !== undefined 
+                              ? `${modelB.lastMetrics.load_duration_ms} ms` 
+                              : 'N/A'}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Set Active Model Quick Buttons */}
+                  <div className="flex gap-2 pt-1 border-t border-zinc-800">
+                    <button
+                      onClick={() => {
+                        onUpdateConfig({ active_model: modelA.name });
+                        appendLog(`[bold green]Active model set to '${modelA.name}' from comparison table![/bold green]`);
+                      }}
+                      className="flex-1 py-1.5 rounded bg-cyan-900/60 hover:bg-cyan-800 text-cyan-200 text-xs font-bold transition-colors"
+                    >
+                      Set {modelA.name} Active
+                    </button>
+                    <button
+                      onClick={() => {
+                        onUpdateConfig({ active_model: modelB.name });
+                        appendLog(`[bold green]Active model set to '${modelB.name}' from comparison table![/bold green]`);
+                      }}
+                      className="flex-1 py-1.5 rounded bg-purple-900/60 hover:bg-purple-800 text-purple-200 text-xs font-bold transition-colors"
+                    >
+                      Set {modelB.name} Active
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Model Action Quick Buttons */}
+              <div className="pt-2 border-t border-zinc-800 flex items-center gap-2">
+                <button
+                  onClick={() => setMenuState('models_pull')}
+                  className="flex-1 py-1.5 px-3 rounded bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>[p] Pull / Download New Model</span>
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Model Pull / Download View with Rich Progress Bar */}
         {menuState === 'models_pull' && (

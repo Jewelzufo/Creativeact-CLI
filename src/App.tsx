@@ -29,25 +29,65 @@ const INITIAL_MODELS: OllamaModel[] = [
     name: 'llama3.2:1b',
     size: 1300000000,
     modified_at: '2026-11-04T10:00:00Z',
-    details: { family: 'llama', parameter_size: '1.2B', quantization_level: 'Q4_K_M' }
+    details: { family: 'llama', parameter_size: '1.2B', quantization_level: 'Q4_K_M' },
+    lastMetrics: {
+      eval_count: 54,
+      eval_duration_ns: 2150000000,
+      eval_duration_sec: 2.15,
+      tokens_per_second: 25.1,
+      load_duration_ms: 194.2,
+      prompt_eval_count: 14,
+      prompt_eval_duration_sec: 0.11,
+      timestamp: 'Initial benchmark',
+    }
   },
   {
     name: 'qwen2.5:1.5b',
     size: 986000000,
     modified_at: '2026-11-03T14:30:00Z',
-    details: { family: 'qwen2', parameter_size: '1.5B', quantization_level: 'Q4_K_M' }
+    details: { family: 'qwen2', parameter_size: '1.5B', quantization_level: 'Q4_K_M' },
+    lastMetrics: {
+      eval_count: 62,
+      eval_duration_ns: 2820000000,
+      eval_duration_sec: 2.82,
+      tokens_per_second: 22.0,
+      load_duration_ms: 210.5,
+      prompt_eval_count: 18,
+      prompt_eval_duration_sec: 0.14,
+      timestamp: 'Initial benchmark',
+    }
   },
   {
     name: 'deepseek-r1:1.5b',
     size: 1120000000,
     modified_at: '2026-11-01T08:15:00Z',
-    details: { family: 'qwen2', parameter_size: '1.5B', quantization_level: 'Q4_K_M' }
+    details: { family: 'qwen2', parameter_size: '1.5B', quantization_level: 'Q4_K_M' },
+    lastMetrics: {
+      eval_count: 68,
+      eval_duration_ns: 3400000000,
+      eval_duration_sec: 3.40,
+      tokens_per_second: 20.0,
+      load_duration_ms: 225.0,
+      prompt_eval_count: 16,
+      prompt_eval_duration_sec: 0.13,
+      timestamp: 'Initial benchmark',
+    }
   },
   {
     name: 'phi3:mini',
     size: 2300000000,
     modified_at: '2026-10-28T19:00:00Z',
-    details: { family: 'phi3', parameter_size: '3.8B', quantization_level: 'Q4_K_M' }
+    details: { family: 'phi3', parameter_size: '3.8B', quantization_level: 'Q4_K_M' },
+    lastMetrics: {
+      eval_count: 65,
+      eval_duration_ns: 6200000000,
+      eval_duration_sec: 6.20,
+      tokens_per_second: 10.5,
+      load_duration_ms: 410.0,
+      prompt_eval_count: 15,
+      prompt_eval_duration_sec: 0.22,
+      timestamp: 'Initial benchmark',
+    }
   }
 ];
 
@@ -176,6 +216,18 @@ export default function App() {
         updateConfig({ active_model: remaining[0].name });
       }
     }
+  };
+
+  const handleRecordTelemetry = (telemetry: InferenceTelemetry, modelName?: string) => {
+    setLastTelemetry(telemetry);
+    const target = modelName || config.active_model;
+    setModels((prev) =>
+      prev.map((m) =>
+        m.name === target
+          ? { ...m, lastMetrics: telemetry }
+          : m
+      )
+    );
   };
 
   const handleAddPrompt = (prompt: PromptTemplate) => {
@@ -307,7 +359,7 @@ export default function App() {
                   onAddPrompt={handleAddPrompt}
                   onDeletePrompt={handleDeletePrompt}
                   lastTelemetry={lastTelemetry}
-                  onRecordTelemetry={setLastTelemetry}
+                  onRecordTelemetry={handleRecordTelemetry}
                 />
               </div>
             </div>

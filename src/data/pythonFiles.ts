@@ -272,11 +272,12 @@ class TermuxOllamaApp:
 
             self.console.print("\\n[bold]Options:[/bold]")
             self.console.print(" [bold yellow]\\\\[s][/bold yellow] Set active model by number")
+            self.console.print(" [bold yellow]\\\\[c][/bold yellow] Compare two models side-by-side")
             self.console.print(" [bold yellow]\\\\[p][/bold yellow] Pull / Download new model (e.g. llama3.2:1b, qwen2.5:1.5b)")
             self.console.print(" [bold yellow]\\\\[d][/bold yellow] Delete model")
             self.console.print(" [bold yellow]\\\\[b][/bold yellow] Back to main menu")
 
-            sub_choice = self.prompt_input("Models choice [s/p/d/b]: ").lower()
+            sub_choice = self.prompt_input("Models choice [s/c/p/d/b]: ").lower()
 
             if sub_choice in ["b", "0", "q", ""]:
                 break
@@ -1023,6 +1024,32 @@ Local Termux Ollama Platform on Android
    - [2] Models -> [p] pull 'llama3.2:1b'
    - [2] Models -> [s] set as active
    - [1] Chat -> start streaming conversation!
+`
+  },
+  {
+    name: 'DESKTOP_SETUP.md',
+    path: 'DESKTOP_SETUP.md',
+    language: 'markdown',
+    description: 'Detailed step-by-step instructions to run as an app on Windows 11 (Native CLI, Web PWA, & WSL2).',
+    code: `# CreativeAct CLI — Windows 11 Desktop Setup Guide
+
+Run CreativeAct CLI on Windows 11 in three ways:
+1. Native Windows 11 CLI (Python + Windows Terminal + Ollama for Windows)
+2. Standalone Web Studio Desktop App (Install via Edge/Chrome PWA)
+3. WSL2 (Windows Subsystem for Linux)
+
+## Fast Native Steps:
+1. Install Ollama for Windows: https://ollama.com/download/windows
+2. Install Python 3.10+ (ensure "Add python.exe to PATH" is checked)
+3. In Windows Terminal:
+   pip install --upgrade rich httpx
+4. Run:
+   python -m termux_ollama_cli.app
+
+## 1-Click Desktop Shortcut:
+Create 'launch_creativeact.bat' in the project folder:
+   wt.exe -p "PowerShell" python -m termux_ollama_cli.app
+Right-click -> Send to -> Desktop (create shortcut).
 `
   }
 ];
