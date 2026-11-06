@@ -274,12 +274,11 @@ class TermuxOllamaApp:
 
             self.console.print("\n[bold]Options:[/bold]")
             self.console.print(" [bold yellow]\\[s][/bold yellow] Set active model by number")
-            self.console.print(" [bold yellow]\\[c][/bold yellow] Compare two models side-by-side")
             self.console.print(" [bold yellow]\\[p][/bold yellow] Pull / Download new model (e.g. llama3.2:1b, qwen2.5:1.5b)")
             self.console.print(" [bold yellow]\\[d][/bold yellow] Delete model")
             self.console.print(" [bold yellow]\\[b][/bold yellow] Back to main menu")
 
-            sub_choice = self.prompt_input("Models choice [s/c/p/d/b]: ").lower()
+            sub_choice = self.prompt_input("Models choice [s/p/d/b]: ").lower()
 
             if sub_choice in ["b", "0", "q", ""]:
                 break
@@ -301,24 +300,6 @@ class TermuxOllamaApp:
                     self.console.print("[red]Please enter a valid number.[/red]")
                 input("\nPress Enter to continue...")
 
-            elif sub_choice == "c":
-                if len(models) < 2:
-                    self.console.print("[red]Need at least 2 models installed to perform comparison.[/red]")
-                    input("\nPress Enter to continue...")
-                    continue
-                num_a = self.prompt_input(f"Enter first model # (1-{len(models)}): ")
-                num_b = self.prompt_input(f"Enter second model # (1-{len(models)}): ")
-                try:
-                    idx_a = int(num_a) - 1
-                    idx_b = int(num_b) - 1
-                    if 0 <= idx_a < len(models) and 0 <= idx_b < len(models):
-                        self.render_model_comparison(models[idx_a], models[idx_b])
-                    else:
-                        self.console.print("[red]Invalid model numbers selected.[/red]")
-                except ValueError:
-                    self.console.print("[red]Please enter valid numbers.[/red]")
-                input("\nPress Enter to continue...")
-
             elif sub_choice == "p":
                 model_to_pull = self.prompt_input("Enter model tag to download (e.g. qwen2.5:1.5b, llama3.2:1b): ").strip()
                 if model_to_pull:
@@ -337,53 +318,6 @@ class TermuxOllamaApp:
                         ok, msg = delete_model(del_target)
                         self.console.print(f"[{'green' if ok else 'red'}]{msg}[/{'green' if ok else 'red'}]")
                     input("\nPress Enter to continue...")
-
-    def render_model_comparison(self, mA: Dict[str, Any], mB: Dict[str, Any]):
-        """Render side-by-side comparison table between two models."""
-        self.console.clear()
-        name_a = mA.get("name", "Model A")
-        name_b = mB.get("name", "Model B")
-        details_a = mA.get("details", {}) or {}
-        details_b = mB.get("details", {}) or {}
-
-        param_a = details_a.get("parameter_size", "N/A")
-        param_b = details_b.get("parameter_size", "N/A")
-        quant_a = details_a.get("quantization_level", "Q4_K_M")
-        quant_b = details_b.get("quantization_level", "Q4_K_M")
-        family_a = details_a.get("family", "N/A")
-        family_b = details_b.get("family", "N/A")
-        size_a = format_size(mA.get("size"))
-        size_b = format_size(mB.get("size"))
-
-        latest = self.metrics_session.latest()
-        speed_str = f"{latest.tokens_per_second:.1f} t/s" if latest and latest.tokens_per_second is not None else "N/A"
-        eval_dur = f"{latest.eval_duration_sec:.2f} s" if latest and latest.eval_duration_sec is not None else "N/A"
-        load_dur = f"{latest.load_duration_ms:.1f} ms" if latest and latest.load_duration_ms is not None else "N/A"
-
-        width = self.get_width()
-        active = get_active_model()
-
-        if width < 50:
-            self.console.print(f"[bold cyan]─── Model Comparison ───[/bold cyan]\n")
-            self.console.print(f"[bold yellow]Model A:[/bold yellow] [bold]{name_a}[/bold] {'(Active)' if name_a == active else ''}")
-            self.console.print(f" · Params: {param_a} | Quant: {quant_a} | Size: {size_a}\n")
-            self.console.print(f"[bold magenta]Model B:[/bold magenta] [bold]{name_b}[/bold] {'(Active)' if name_b == active else ''}")
-            self.console.print(f" · Params: {param_b} | Quant: {quant_b} | Size: {size_b}\n")
-            self.console.print(f"[dim]Last Inference (session): {eval_dur} | Speed: {speed_str}[/dim]")
-        else:
-            table = Table(title=f"⚖ Model Comparison: {name_a} vs {name_b}", header_style="bold cyan", border_style="dim")
-            table.add_column("Specification", style="dim", no_wrap=True)
-            table.add_column(f"{name_a} {'(Active)' if name_a == active else ''}", style="bold yellow")
-            table.add_column(f"{name_b} {'(Active)' if name_b == active else ''}", style="bold magenta")
-
-            table.add_row("Parameter Size", str(param_a), str(param_b))
-            table.add_row("Quantization Level", str(quant_a), str(quant_b))
-            table.add_row("Architecture Family", str(family_a), str(family_b))
-            table.add_row("Disk Footprint", size_a, size_b)
-            table.add_row("Last Eval Duration", eval_dur if name_a == active else "N/A", eval_dur if name_b == active else "N/A")
-            table.add_row("Last Speed (Tokens/s)", speed_str if name_a == active else "N/A", speed_str if name_b == active else "N/A")
-            table.add_row("Last Load Latency", load_dur if name_a == active else "N/A", load_dur if name_b == active else "N/A")
-            self.console.print(table)
 
     def prompt_store_menu(self):
         """Prompt templates management and rapid execution."""
